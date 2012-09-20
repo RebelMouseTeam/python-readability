@@ -8,7 +8,7 @@ setup(
     author_email="roberto@rebelmouse.com",
     description="modification of buriy's readability tool",
     test_suite = "tests.test_article_only",
-    long_description=open("README").read(),
+    long_description= "Given a html, it pulls out the main body text",
     license="Apache License 2.0",
     url="http://github.com/ralamosm/python-readability",
     packages=['readability'],
