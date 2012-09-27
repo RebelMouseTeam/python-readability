@@ -27,7 +27,8 @@ setup(
     long_description= "Given a html, it pulls out the main body text",
     license="Apache License 2.0",
     url="http://github.com/ralamosm/python-readability",
-    packages=find_packages(),
+    packages=find_packages(where='src'),
+    package_dir= {'': 'src'},
     install_requires = get_requirements(),
     classifiers=[
         "Environment :: Web Environment",
