@@ -277,10 +277,9 @@ class Document:
             inner_text = clean(elem.text_content() or "")
             inner_text_len = len(inner_text)
 
-
             # If this paragraph is less than 25 characters
             # don't even count it.
-            images_found = REGEXES['imgs'].findall( unicode(''.join(map(tostring, list(elem)))))
+            images_found = REGEXES['imgs'].findall(unicode(''.join(map(tostring, list(elem)))))
             if inner_text_len < MIN_LEN and elem.tag != 'img' and not images_found:
                 continue
 
@@ -303,7 +302,7 @@ class Document:
             #    candidates[elem] = self.score_node(elem)
 
             if images_found:
-                content_score += len(images_found)*2
+                content_score += len(images_found)
 
             # Add the score to the parent. The grandparent gets half.
             #WTF? candidates[elem]['content_score'] += content_score
@@ -364,16 +363,22 @@ class Document:
     def debug(self, *a):
         if self.options.get('debug', False):
             log.debug(*a)
+        #print str(*a)
 
-    def remove_unlikely_candidates(self):
+    def remove_unlikely_candidates(self, chances=5):
+        repeat = False
+        if chances < 1:
+            return
         for elem in self.html.iter():
             s = "%s %s" % (elem.get('class', ''), elem.get('id', ''))
             if len(s) < 2:
                 continue
-            #self.debug(s)
             if REGEXES['unlikelyCandidatesRe'].search(s) and (not REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
-                self.debug("Removing unlikely candidate - %s" % describe(elem))
                 elem.drop_tree()
+                repeat = True
+        if repeat:
+            chances -= 1
+            self.remove_unlikely_candidates(chances)
 
     def transform_misused_divs_into_paragraphs(self):
         for elem in self.tags(self.html, 'div'):
@@ -390,7 +395,7 @@ class Document:
                 #print "Fixed element "+describe(elem)
 
         for elem in self.tags(self.html, 'div'):
-            if (elem.text and elem.text.strip()):# or REGEXES['imgs'].search(unicode(''.join(map(tostring, list(elem))))):
+            if (elem.text and elem.text.strip()) or REGEXES['imgs'].search(unicode(''.join(map(tostring, list(elem))))):
                 p = fragment_fromstring('<p/>')
                 p.text = elem.text
                 elem.text = None
