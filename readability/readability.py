@@ -254,6 +254,10 @@ class Document:
         return best_candidate
 
     def get_link_density(self, elem):
+        return 0
+        '''
+        now always 0 for link density
+
         link_length = 0
         for i in elem.findall(".//a"):
             link_length += text_length(i)
@@ -261,6 +265,7 @@ class Document:
         #    link_length = link_length
         total_length = text_length(elem)
         return float(link_length) / max(total_length, 1)
+        '''
 
     def score_paragraphs(self, ):
         MIN_LEN = self.options.get(
