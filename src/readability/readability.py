@@ -29,6 +29,7 @@ REGEXES = {
     'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
     'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
     'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I),
+    'imgs': re.compile('<(img)', re.I),
     #'replaceBrsRe': re.compile('(<br[^>]*>[ \n\r\t]*){2,}',re.I),
     #'replaceFontsRe': re.compile('<(\/?)font[^>]*>',re.I),
     #'trimRe': re.compile('^\s+|\s+$/'),
@@ -252,6 +253,10 @@ class Document:
         return best_candidate
 
     def get_link_density(self, elem):
+        return 0
+        '''
+        now always 0 for link density
+
         link_length = 0
         for i in elem.findall(".//a"):
             link_length += text_length(i)
@@ -259,6 +264,7 @@ class Document:
         #    link_length = link_length
         total_length = text_length(elem)
         return float(link_length) / max(total_length, 1)
+        '''
 
     def score_paragraphs(self, ):
         MIN_LEN = self.options.get(
@@ -266,7 +272,7 @@ class Document:
             self.TEXT_LENGTH_THRESHOLD)
         candidates = {}
         ordered = []
-        for elem in self.tags(self._html(), "p", "pre", "td"):
+        for elem in self.tags(self._html(), "p", "pre", "td", "img"):
             parent_node = elem.getparent()
             if parent_node is None:
                 continue
@@ -277,7 +283,8 @@ class Document:
 
             # If this paragraph is less than 25 characters
             # don't even count it.
-            if inner_text_len < MIN_LEN:
+            images_found = REGEXES['imgs'].findall(unicode(''.join(map(tostring, list(elem)))))
+            if inner_text_len < MIN_LEN and elem.tag != 'img' and not images_found:
                 continue
 
             if parent_node not in candidates:
@@ -289,12 +296,19 @@ class Document:
                     grand_parent_node)
                 ordered.append(grand_parent_node)
 
+            # Add a point for the paragraph itself as a base.
             content_score = 1
+            # Add points for any commas within this paragraph
             content_score += len(inner_text.split(','))
+            # For every 100 characters in this paragraph, add another point. Up to 3 points.
             content_score += min((inner_text_len / 100), 3)
             #if elem not in candidates:
             #    candidates[elem] = self.score_node(elem)
 
+            if images_found:
+                content_score += len(images_found)
+
+            # Add the score to the parent. The grandparent gets half.
             #WTF? candidates[elem]['content_score'] += content_score
             candidates[parent_node]['content_score'] += content_score
             if grand_parent_node is not None:
@@ -353,16 +367,24 @@ class Document:
     def debug(self, *a):
         if self.options.get('debug', False):
             log.debug(*a)
+        #print str(*a)
 
-    def remove_unlikely_candidates(self):
+    def remove_unlikely_candidates(self, chances=5):
+        repeat = False
+        if chances < 1:
+            return
         for elem in self.html.iter():
             s = "%s %s" % (elem.get('class', ''), elem.get('id', ''))
             if len(s) < 2:
                 continue
             #self.debug(s)
             if REGEXES['unlikelyCandidatesRe'].search(s) and (not REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
-                self.debug("Removing unlikely candidate - %s" % describe(elem))
+                #self.debug("Removing unlikely candidate - %s" % describe(elem))
                 elem.drop_tree()
+                repeat = True
+        if repeat:
+            chances -= 1
+            self.remove_unlikely_candidates(chances)
 
     def transform_misused_divs_into_paragraphs(self):
         for elem in self.tags(self.html, 'div'):
@@ -379,7 +401,7 @@ class Document:
                 #print "Fixed element "+describe(elem)
 
         for elem in self.tags(self.html, 'div'):
-            if elem.text and elem.text.strip():
+            if (elem.text and elem.text.strip()) or REGEXES['imgs'].search(unicode(''.join(map(tostring, list(elem))))):
                 p = fragment_fromstring('<p/>')
                 p.text = elem.text
                 elem.text = None
