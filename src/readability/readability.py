@@ -29,7 +29,7 @@ REGEXES = {
     'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
     'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
     'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I),
-    'imgs': re.compile('<(img)', re.I),
+    'allowInEmptiesRe': re.compile('<(img|iframe)', re.I),
     #'replaceBrsRe': re.compile('(<br[^>]*>[ \n\r\t]*){2,}',re.I),
     #'replaceFontsRe': re.compile('<(\/?)font[^>]*>',re.I),
     #'trimRe': re.compile('^\s+|\s+$/'),
@@ -283,7 +283,7 @@ class Document:
 
             # If this paragraph is less than 25 characters
             # don't even count it.
-            images_found = REGEXES['imgs'].findall(unicode(''.join(map(tostring, list(elem)))))
+            images_found = REGEXES['allowInEmptiesRe'].findall(unicode(''.join(map(tostring, list(elem)))))
             if inner_text_len < MIN_LEN and elem.tag != 'img' and not images_found:
                 continue
 
@@ -401,7 +401,7 @@ class Document:
                 #print "Fixed element "+describe(elem)
 
         for elem in self.tags(self.html, 'div'):
-            if (elem.text and elem.text.strip()) or REGEXES['imgs'].search(unicode(''.join(map(tostring, list(elem))))):
+            if (elem.text and elem.text.strip()) or REGEXES['allowInEmptiesRe'].search(unicode(''.join(map(tostring, list(elem))))):
                 p = fragment_fromstring('<p/>')
                 p.text = elem.text
                 elem.text = None
