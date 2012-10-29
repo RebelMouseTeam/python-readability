@@ -28,9 +28,8 @@ REGEXES = {
     'okMaybeItsACandidateRe': re.compile('and|article|body|column|main|shadow', re.I),
     'positiveRe': re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I),
     'negativeRe': re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I),
-    'divToPElementsRe': re.compile('<(a|blockquote|dl|div|ol|p|pre|table|ul)', re.I),
-    'imgs': re.compile('<(img)', re.I),
-    ##'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I),
+    'divToPElementsRe': re.compile('<(a|blockquote|dl|div|img|ol|p|pre|table|ul)', re.I),
+    'allowInEmptiesRe': re.compile('<(img|iframe)', re.I),
     #'replaceBrsRe': re.compile('(<br[^>]*>[ \n\r\t]*){2,}',re.I),
     #'replaceFontsRe': re.compile('<(\/?)font[^>]*>',re.I),
     #'trimRe': re.compile('^\s+|\s+$/'),
@@ -227,6 +226,8 @@ class Document:
                     and link_density == 0 \
                     and re.search('\.( |$)', node_content):
                     append = True
+                elif REGEXES['allowInEmptiesRe'].search(unicode(''.join(map(tostring, list(sibling))))):
+                    append = True
 
             if append:
                 # We don't want to append directly to output, but the div
@@ -273,7 +274,7 @@ class Document:
             self.TEXT_LENGTH_THRESHOLD)
         candidates = {}
         ordered = []
-        for elem in self.tags(self._html(), "p", "pre", "td", "img"):
+        for elem in self.tags(self._html(), "p", "pre", "td", "img", "iframe"):
             parent_node = elem.getparent()
             if parent_node is None:
                 continue
@@ -284,8 +285,8 @@ class Document:
 
             # If this paragraph is less than 25 characters
             # don't even count it.
-            images_found = REGEXES['imgs'].findall(unicode(''.join(map(tostring, list(elem)))))
-            if inner_text_len < MIN_LEN and elem.tag != 'img' and not images_found:
+            images_iframe_found = REGEXES['allowInEmptiesRe'].findall(unicode(''.join(map(tostring, list(elem)))))
+            if inner_text_len < MIN_LEN and elem.tag != 'img' and elem.tag != 'iframe' and not images_iframe_found:
                 continue
 
             if parent_node not in candidates:
@@ -306,8 +307,8 @@ class Document:
             #if elem not in candidates:
             #    candidates[elem] = self.score_node(elem)
 
-            if images_found:
-                content_score += len(images_found)
+            if images_iframe_found:
+                content_score += len(images_iframe_found)
 
             # Add the score to the parent. The grandparent gets half.
             #WTF? candidates[elem]['content_score'] += content_score
@@ -378,7 +379,9 @@ class Document:
             s = "%s %s" % (elem.get('class', ''), elem.get('id', ''))
             if len(s) < 2:
                 continue
+            #self.debug(s)
             if REGEXES['unlikelyCandidatesRe'].search(s) and (not REGEXES['okMaybeItsACandidateRe'].search(s)) and elem.tag not in ['html', 'body']:
+                #self.debug("Removing unlikely candidate - %s" % describe(elem))
                 elem.drop_tree()
                 repeat = True
         if repeat:
@@ -400,7 +403,7 @@ class Document:
                 #print "Fixed element "+describe(elem)
 
         for elem in self.tags(self.html, 'div'):
-            if (elem.text and elem.text.strip()) or REGEXES['imgs'].search(unicode(''.join(map(tostring, list(elem))))):
+            if (elem.text and elem.text.strip()) or REGEXES['allowInEmptiesRe'].search(unicode(''.join(map(tostring, list(elem))))):
                 p = fragment_fromstring('<p/>')
                 p.text = elem.text
                 elem.text = None

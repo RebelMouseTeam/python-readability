@@ -226,6 +226,8 @@ class Document:
                     and link_density == 0 \
                     and re.search('\.( |$)', node_content):
                     append = True
+                elif REGEXES['allowInEmptiesRe'].search(unicode(''.join(map(tostring, list(sibling))))):
+                    append = True
 
             if append:
                 # We don't want to append directly to output, but the div
@@ -272,7 +274,7 @@ class Document:
             self.TEXT_LENGTH_THRESHOLD)
         candidates = {}
         ordered = []
-        for elem in self.tags(self._html(), "p", "pre", "td", "img"):
+        for elem in self.tags(self._html(), "p", "pre", "td", "img", "iframe"):
             parent_node = elem.getparent()
             if parent_node is None:
                 continue
@@ -283,8 +285,8 @@ class Document:
 
             # If this paragraph is less than 25 characters
             # don't even count it.
-            images_found = REGEXES['allowInEmptiesRe'].findall(unicode(''.join(map(tostring, list(elem)))))
-            if inner_text_len < MIN_LEN and elem.tag != 'img' and not images_found:
+            images_iframe_found = REGEXES['allowInEmptiesRe'].findall(unicode(''.join(map(tostring, list(elem)))))
+            if inner_text_len < MIN_LEN and elem.tag != 'img' and elem.tag != 'iframe' and not images_iframe_found:
                 continue
 
             if parent_node not in candidates:
@@ -305,8 +307,8 @@ class Document:
             #if elem not in candidates:
             #    candidates[elem] = self.score_node(elem)
 
-            if images_found:
-                content_score += len(images_found)
+            if images_iframe_found:
+                content_score += len(images_iframe_found)
 
             # Add the score to the parent. The grandparent gets half.
             #WTF? candidates[elem]['content_score'] += content_score
