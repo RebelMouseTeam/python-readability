@@ -453,7 +453,7 @@ class Document:
                 content_score = 0
             tag = el.tag
 
-            if weight + content_score < 0:
+            if weight + content_score < 0 and not REGEXES['allowInEmptiesRe'].search(unicode(''.join(map(tostring, list(sibling))))):
                 self.debug("Cleaned %s with score %6.3f and weight %-3s" %
                     (describe(el), content_score, weight, ))
                 el.drop_tree()
